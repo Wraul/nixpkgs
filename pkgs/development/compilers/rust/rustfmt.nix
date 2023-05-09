@@ -23,6 +23,16 @@ rustPlatform.buildRustPackage rec {
   CFG_RELEASE = rustPlatform.rust.rustc.version;
   CFG_RELEASE_CHANNEL = if asNightly then "nightly" else "stable";
 
+  # Rustfmt uses the rustc_driver and std private libraries, and Rust's build process forces them to have
+  # an install name of `@rpath/...` [0] [1] instead of the standard on macOS, which is an absolute path
+  # to itself.
+  #
+  # [0]: https://github.com/rust-lang/rust/blob/f77f4d55bdf9d8955d3292f709bd9830c2fdeca5/src/bootstrap/builder.rs#L1543
+  # [1]: https://github.com/rust-lang/rust/blob/f77f4d55bdf9d8955d3292f709bd9830c2fdeca5/compiler/rustc_codegen_ssa/src/back/linker.rs#L323-L331
+  preFixup = lib.optionalString stdenv.isDarwin ''
+    install_name_tool -add_rpath "${rustPlatform.rust.rustc}/lib" "$out/bin/rustfmt"
+  '';
+
   meta = with lib; {
     description = "A tool for formatting Rust code according to style guidelines";
     homepage = "https://github.com/rust-lang-nursery/rustfmt";
